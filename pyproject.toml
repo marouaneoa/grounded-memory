@@ -1,0 +1,106 @@
+[project]
+name = "grounded-memory"
+version = "0.1.0"
+description = "Correctness-First Structured Memory Layer for LLM Agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [
+    {name = "Faycal & Marouane"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+dependencies = [
+    "pydantic>=2.0",
+    "typing-extensions>=4.14.1",
+    "python-dateutil>=2.8",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "networkx>=3.0",
+    "rich>=13.0",
+    "httpx>=0.25.0",
+]
+
+[project.urls]
+Repository = "https://github.com/marouaneoa/GroundedMemory"
+
+[project.optional-dependencies]
+dev = [
+    "black>=24.0",
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21",
+    "ruff>=0.6.0",
+]
+llm = [
+    "pydantic-ai>=1.0",
+]
+api = [
+    "fastapi>=0.116.0",
+    "uvicorn>=0.35.0",
+]
+benchmark = [
+    "datasets>=2.19.0,<3.0.0",
+]
+postgres = [
+    "asyncpg>=0.29.0",
+    "psycopg2-binary>=2.9.0",
+]
+neo4j = [
+    "neo4j>=5.0.0",
+]
+all = [
+    "grounded-memory[dev,llm,api,benchmark,postgres,neo4j]",
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"grounded_memory.configs" = ["*.yaml"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests", "demos", "scripts"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "SIM",
+]
+ignore = [
+    "E501",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["grounded_memory", "gmem"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

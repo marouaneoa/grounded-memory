@@ -1,0 +1,182 @@
+# Legal Domain Constraints
+# ====================================
+# Constraints for legal knowledge: case law, contracts, precedent chains,
+# jurisdiction validation, and compliance documentation.
+
+constraints:
+  # =========================================================================
+  # JURISDICTION VALIDATION (Severity: error)
+  # =========================================================================
+
+  - id: jurisdiction_required
+    name: "Jurisdiction Required"
+    description: "Legal facts must specify applicable jurisdiction"
+    type: requirement
+    severity: error
+    applies_to:
+      - RELATED_TO
+      - APPROVED_BY
+      - INSTANCE_OF
+    condition:
+      check: has_attribute
+      attribute: jurisdiction
+    actions:
+      on_violation:
+        - reject_with_reason: "Legal facts require jurisdiction specification"
+
+  - id: precedent_chain_integrity
+    name: "Precedent Chain Integrity"
+    description: "Case citations must reference existing, valid precedents"
+    type: consistency
+    severity: error
+    applies_to:
+      - RELATED_TO
+    condition:
+      if:
+        - fact_kind == "precedent"
+      then:
+        - verify: object_entity_exists
+        - verify: object_is_valid_case
+    actions:
+      on_violation:
+        - reject_with_reason: "Referenced precedent not found in knowledge base"
+
+  # =========================================================================
+  # CONTRACT GOVERNANCE (Severity: error)
+  # =========================================================================
+
+  - id: contract_party_verification
+    name: "Contract Party Verification"
+    description: "Contract relationships must involve verified legal entities"
+    type: requirement
+    severity: error
+    applies_to:
+      - PART_OF
+      - AFFILIATED_WITH
+    condition:
+      check: entities_are_legal_persons
+    actions:
+      on_violation:
+        - reject_with_reason: "Contract parties must be verified legal entities"
+
+  # =========================================================================
+  # TEMPORAL CONSTRAINTS (Severity: warning)
+  # =========================================================================
+
+  - id: statute_of_limitations
+    name: "Statute of Limitations Check"
+    description: "Flag legal actions referencing expired limitation periods"
+    type: temporal
+    severity: warning
+    applies_to:
+      - RELATED_TO
+    condition:
+      if:
+        - fact_kind == "legal_action"
+      then:
+        - verify: within_limitation_period
+    actions:
+      on_violation:
+        - log_warning: "Potential statute of limitations issue"
+
+  - id: superseded_legislation
+    name: "Superseded Legislation Warning"
+    description: "Warn when referencing legislation that has been superseded"
+    type: consistency
+    severity: warning
+    applies_to:
+      - INSTANCE_OF
+      - RELATED_TO
+    condition:
+      check: legislation_is_current
+    actions:
+      on_violation:
+        - log_warning: "Referenced legislation may have been superseded"
+        - suggest_current_version: true
+
+# =========================================================================
+# RETRIEVAL WEIGHTS
+# =========================================================================
+
+retrieval_weights:
+  APPROVED_BY:
+    weight: 9.0
+    is_safety_critical: true
+    decay_per_hop: 0.1
+
+  PART_OF:
+    weight: 7.0
+    is_safety_critical: false
+    decay_per_hop: 0.2
+
+  INSTANCE_OF:
+    weight: 6.0
+    is_safety_critical: false
+    decay_per_hop: 0.2
+
+  AFFILIATED_WITH:
+    weight: 5.0
+    is_safety_critical: false
+    decay_per_hop: 0.25
+
+  REPORTED_BY:
+    weight: 5.0
+    is_safety_critical: false
+    decay_per_hop: 0.25
+
+  HAS_ATTRIBUTE:
+    weight: 4.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  RELATED_TO:
+    weight: 2.0
+    is_safety_critical: false
+    decay_per_hop: 0.4
+
+# =========================================================================
+# ENTITY SCHEMAS
+# =========================================================================
+
+entity_schemas:
+  person:
+    required:
+      - name: string
+    optional:
+      - role: enum[plaintiff, defendant, judge, counsel, witness]
+      - bar_number: string
+      - jurisdiction: string
+
+  organization:
+    required:
+      - name: string
+    optional:
+      - type: enum[law_firm, corporation, government_body, court]
+      - jurisdiction: string
+      - registration_number: string
+
+  document:
+    required:
+      - name: string
+    optional:
+      - type: enum[contract, ruling, filing, statute, brief, motion]
+      - court: string
+      - date: date
+      - case_number: string
+      - jurisdiction: string
+
+  concept:
+    required:
+      - name: string
+    optional:
+      - area_of_law: enum[civil, criminal, corporate, ip, tax, environmental]
+      - jurisdiction: string
+      - status: enum[current, superseded, proposed]
+
+  event:
+    required:
+      - name: string
+    optional:
+      - type: enum[hearing, trial, filing_deadline, settlement, appeal]
+      - date: date
+      - court: string

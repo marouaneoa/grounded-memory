@@ -1,0 +1,24 @@
+<svg width="960" height="280" viewBox="0 0 960 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="960" y2="280" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A2A43"/>
+      <stop offset="1" stop-color="#107A7D"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="960" height="280" rx="28" fill="url(#g)"/>
+  <g opacity="0.9">
+    <circle cx="132" cy="140" r="54" fill="#F5F7FA"/>
+    <circle cx="132" cy="140" r="34" fill="#107A7D"/>
+    <path d="M132 74V32" stroke="#F5F7FA" stroke-width="10" stroke-linecap="round"/>
+    <path d="M132 248V206" stroke="#F5F7FA" stroke-width="10" stroke-linecap="round"/>
+    <path d="M198 140H240" stroke="#F5F7FA" stroke-width="10" stroke-linecap="round"/>
+    <path d="M24 140H66" stroke="#F5F7FA" stroke-width="10" stroke-linecap="round"/>
+    <path d="M180 92L210 62" stroke="#F5F7FA" stroke-width="10" stroke-linecap="round"/>
+    <path d="M54 218L84 188" stroke="#F5F7FA" stroke-width="10" stroke-linecap="round"/>
+    <path d="M180 188L210 218" stroke="#F5F7FA" stroke-width="10" stroke-linecap="round"/>
+    <path d="M54 62L84 92" stroke="#F5F7FA" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <text x="300" y="124" fill="#F5F7FA" font-family="Georgia, 'Times New Roman', serif" font-size="78" font-weight="700">gmem</text>
+  <text x="302" y="170" fill="#D7EEF0" font-family="Verdana, sans-serif" font-size="24" letter-spacing="1.1">grounded memory runtime for llm agents</text>
+  <text x="302" y="206" fill="#C8E2E6" font-family="Verdana, sans-serif" font-size="18">constraint-governed • bitemporal • adapter-driven</text>
+</svg>

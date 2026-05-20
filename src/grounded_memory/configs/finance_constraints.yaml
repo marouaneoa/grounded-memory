@@ -1,0 +1,175 @@
+# Finance Domain Constraints
+# ====================================
+# Constraints for financial knowledge: transaction tracking, compliance,
+# risk assessment, and regulatory audit trails.
+
+constraints:
+  # =========================================================================
+  # REGULATORY COMPLIANCE (Severity: error)
+  # =========================================================================
+
+  - id: kyc_entity_required
+    name: "KYC Entity Verification"
+    description: "Financial relationships must involve verified entities"
+    type: requirement
+    severity: error
+    applies_to:
+      - OWNS
+      - MANAGES
+      - APPROVED_BY
+    condition:
+      check: entity_has_attribute
+      attribute: verification_status
+      expected: verified
+    actions:
+      on_violation:
+        - reject_with_reason: "Entity must be KYC-verified for financial relations"
+        - log_compliance_event: true
+
+  - id: dual_approval_requirement
+    name: "Dual Approval for High-Value"
+    description: "High-value transactions require dual approval chain"
+    type: requirement
+    severity: error
+    applies_to:
+      - APPROVED_BY
+    condition:
+      if:
+        - transaction_value > 100000
+      then:
+        - verify: has_dual_approval
+    actions:
+      on_violation:
+        - reject_with_reason: "High-value items require dual approval"
+        - log_compliance_event: true
+
+  # =========================================================================
+  # AUDIT TRAIL (Severity: error)
+  # =========================================================================
+
+  - id: immutable_audit_trail
+    name: "Immutable Audit Trail"
+    description: "Financial facts cannot be deleted, only superseded with reason"
+    type: consistency
+    severity: error
+    applies_to: []
+    condition:
+      check: supersession_has_reason
+    actions:
+      on_violation:
+        - reject_with_reason: "Financial fact supersession requires documented reason"
+
+  # =========================================================================
+  # RISK CONTROLS (Severity: warning)
+  # =========================================================================
+
+  - id: concentration_risk
+    name: "Concentration Risk"
+    description: "Warn when exposure to single counterparty exceeds threshold"
+    type: cardinality
+    severity: warning
+    applies_to:
+      - RELATED_TO
+      - OWNS
+    condition:
+      check: cardinality_limit
+      count_of: active_exposure_facts
+      where: same_counterparty
+      max: 5
+    actions:
+      on_violation:
+        - log_risk_event: true
+        - show_exposure_breakdown: true
+
+  - id: sanctions_screening
+    name: "Sanctions Screening"
+    description: "Flag entities matching sanctions watch lists"
+    type: prohibition
+    severity: warning
+    applies_to: []
+    condition:
+      check: entity_not_sanctioned
+      lookup: sanctions_database
+    actions:
+      on_violation:
+        - log_compliance_event: true
+        - escalate_to_compliance: true
+
+# =========================================================================
+# RETRIEVAL WEIGHTS
+# =========================================================================
+
+retrieval_weights:
+  APPROVED_BY:
+    weight: 9.0
+    is_safety_critical: true
+    decay_per_hop: 0.1
+
+  OWNS:
+    weight: 8.0
+    is_safety_critical: true
+    decay_per_hop: 0.15
+
+  MANAGES:
+    weight: 7.0
+    is_safety_critical: false
+    decay_per_hop: 0.2
+
+  REPORTED_BY:
+    weight: 6.0
+    is_safety_critical: false
+    decay_per_hop: 0.2
+
+  AFFILIATED_WITH:
+    weight: 5.0
+    is_safety_critical: false
+    decay_per_hop: 0.25
+
+  HAS_ATTRIBUTE:
+    weight: 4.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  RELATED_TO:
+    weight: 1.0
+    is_safety_critical: false
+    decay_per_hop: 0.5
+
+# =========================================================================
+# ENTITY SCHEMAS
+# =========================================================================
+
+entity_schemas:
+  organization:
+    required:
+      - name: string
+    optional:
+      - lei_code: string
+      - incorporation_jurisdiction: string
+      - verification_status: enum[pending, verified, flagged]
+      - risk_rating: enum[low, medium, high, critical]
+
+  person:
+    required:
+      - name: string
+    optional:
+      - role: string
+      - department: string
+      - authorization_level: enum[read, trade, approve, admin]
+
+  asset:
+    required:
+      - name: string
+    optional:
+      - asset_class: enum[equity, fixed_income, derivative, commodity, crypto]
+      - currency: string
+      - isin: string
+      - valuation: number
+
+  document:
+    required:
+      - name: string
+    optional:
+      - type: enum[contract, report, filing, prospectus]
+      - date: date
+      - regulatory_body: string

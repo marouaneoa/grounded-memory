@@ -1,0 +1,282 @@
+# Healthcare Constraints Configuration
+# ====================================
+# This file defines the declarative constraints for the medication
+# reconciliation system. Constraints are evaluated at write-time
+# BEFORE facts enter memory.
+
+constraints:
+  # =========================================================================
+  # SAFETY-CRITICAL CONSTRAINTS (Severity: error)
+  # These constraints prevent dangerous medical errors
+  # =========================================================================
+  
+  - id: allergy_conflict
+    name: "Allergy Conflict"
+    description: "Never prescribe medication matching patient's documented allergies"
+    type: prohibition
+    severity: error
+    applies_to:
+      - PRESCRIBED
+    condition:
+      # medication.ingredients ∩ patient.allergies == ∅
+      check: intersection_empty
+      left: medication.ingredients
+      right: patient.allergies
+    actions:
+      on_violation:
+        - suggest_alternatives: true
+        - log_clinical_alert: true
+        - notify_prescriber: true
+        
+  - id: therapeutic_duplication
+    name: "Therapeutic Duplication"
+    description: "Prevent duplicate therapies within same drug class"
+    type: cardinality
+    severity: error
+    applies_to:
+      - PRESCRIBED
+    condition:
+      # count(active_medications with same_therapeutic_class) < max_per_class
+      check: cardinality_limit
+      count_of: active_medications
+      where: same_therapeutic_class
+      max: 1
+    actions:
+      on_violation:
+        - show_existing_medications: true
+        - log_clinical_alert: true
+
+  - id: duplicate_active_medication
+    name: "Duplicate Active Medication"
+    description: "Prevent duplicate active medication orders for the same drug"
+    type: cardinality
+    severity: error
+    applies_to:
+      - PRESCRIBED
+    condition:
+      check: cardinality_limit
+      count_of: active_medications
+      where: duplicate_active_medication
+      max: 1
+    actions:
+      on_violation:
+        - show_existing_medications: true
+        - require_order_reconciliation: true
+        
+  - id: drug_interaction_major
+    name: "Major Drug Interaction"
+    description: "Prevent prescriptions with major drug-drug interactions"
+    type: prohibition
+    severity: error
+    applies_to:
+      - PRESCRIBED
+    condition:
+      check: no_major_interactions
+      lookup: drug_interaction_database
+    actions:
+      on_violation:
+        - show_interaction_details: true
+        - suggest_alternatives: true
+        - log_clinical_alert: true
+
+  # =========================================================================
+  # TEMPORAL CONSTRAINTS (Severity: error)
+  # These ensure logical consistency in timelines
+  # =========================================================================
+  
+  - id: timeline_consistency
+    name: "Timeline Consistency"
+    description: "Medication start dates must be logically consistent"
+    type: temporal
+    severity: error
+    applies_to:
+      - PRESCRIBED
+    condition:
+      checks:
+        - medication.start_date <= current_date + 30_days
+        - medication.end_date > medication.start_date (if end_date exists)
+        - medication.start_date >= treated_condition.diagnosis_date (if treats relationship exists)
+    actions:
+      on_violation:
+        - highlight_inconsistency: true
+
+  # =========================================================================
+  # WARNING-LEVEL CONSTRAINTS (Severity: warning)
+  # These alert clinicians but don't block the prescription
+  # =========================================================================
+  
+  - id: drug_interaction_moderate
+    name: "Moderate Drug Interaction"
+    description: "Alert about moderate drug-drug interactions"
+    type: prohibition
+    severity: warning
+    applies_to:
+      - PRESCRIBED
+    condition:
+      check: no_moderate_interactions
+      lookup: drug_interaction_database
+    actions:
+      on_violation:
+        - show_interaction_details: true
+        - require_acknowledgment: true
+        
+  - id: renal_dose_adjustment
+    name: "Renal Dose Adjustment"
+    description: "Flag medications requiring renal dose adjustment"
+    type: requirement
+    severity: warning
+    applies_to:
+      - PRESCRIBED
+    condition:
+      if:
+        - patient.gfr < 60
+        - medication.requires_renal_adjustment == true
+      then:
+        - verify: dose_is_adjusted_for_renal_function
+    actions:
+      on_violation:
+        - show_dosing_recommendations: true
+        - suggest_adjusted_dose: true
+        
+  - id: high_risk_medication
+    name: "High-Risk Medication"
+    description: "Extra verification for high-risk medications"
+    type: requirement
+    severity: warning
+    applies_to:
+      - PRESCRIBED
+    condition:
+      if:
+        - medication.is_high_risk == true
+      then:
+        - verify: appropriate_monitoring_ordered
+    actions:
+      on_violation:
+        - suggest_monitoring: true
+
+  # =========================================================================
+  # INFORMATIONAL CONSTRAINTS (Severity: info)
+  # These log information without blocking or warning
+  # =========================================================================
+  
+  - id: generic_substitution_available
+    name: "Generic Available"
+    description: "Notify when generic alternative is available"
+    type: informational
+    severity: info
+    applies_to:
+      - PRESCRIBED
+    condition:
+      check: generic_available
+      lookup: drug_formulary
+    actions:
+      on_match:
+        - show_generic_alternatives: true
+
+# =========================================================================
+# RELATIONSHIP WEIGHTS FOR RETRIEVAL
+# These control how facts are prioritized during graph-based retrieval
+# =========================================================================
+
+retrieval_weights:
+  # Safety-critical relationships (always retrieved first)
+  HAS_ALLERGY:
+    weight: 10.0
+    is_safety_critical: true
+    decay_per_hop: 0.1
+    
+  CONTRAINDICATED_WITH:
+    weight: 10.0
+    is_safety_critical: true
+    decay_per_hop: 0.1
+    
+  # High-importance relationships
+  PRESCRIBED:
+    weight: 5.0
+    is_safety_critical: true
+    decay_per_hop: 0.2
+    
+  HAS_CONDITION:
+    weight: 4.0
+    is_safety_critical: false
+    decay_per_hop: 0.2
+    
+  # Medium-importance relationships
+  CONTAINS_INGREDIENT:
+    weight: 3.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+    
+  SAME_THERAPEUTIC_CLASS:
+    weight: 3.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+    
+  TREATS:
+    weight: 3.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+    
+  # Lower-importance
+  DISCONTINUED:
+    weight: 2.0
+    is_safety_critical: false
+    decay_per_hop: 0.4
+    
+  # Default
+  RELATED_TO:
+    weight: 1.0
+    is_safety_critical: false
+    decay_per_hop: 0.5
+
+# =========================================================================
+# ENTITY SCHEMAS
+# Define the expected attributes for each entity type
+# =========================================================================
+
+entity_schemas:
+  patient:
+    required:
+      - name: string
+    optional:
+      - date_of_birth: date
+      - mrn: string
+      - gender: enum[male, female, other]
+      - allergies: list[string]
+      - active_conditions: list[string]
+      - active_medications: list[string]
+      - gfr: number  # Glomerular Filtration Rate
+      
+  medication:
+    required:
+      - name: string
+    optional:
+      - generic_name: string
+      - brand_names: list[string]
+      - ndc_code: string
+      - ingredients: list[string]
+      - therapeutic_class: string
+      - drug_class: string
+      - contraindications: list[string]
+      - warnings: list[string]
+      - requires_renal_adjustment: boolean
+      - is_high_risk: boolean
+      
+  allergy:
+    required:
+      - name: string
+    optional:
+      - allergen_type: enum[drug, food, environmental]
+      - reaction_type: string
+      - severity: enum[mild, moderate, severe, life-threatening]
+      - onset_date: date
+      - cross_reactants: list[string]
+      
+  condition:
+    required:
+      - name: string
+    optional:
+      - icd10_code: string
+      - diagnosed_date: date
+      - status: enum[active, resolved, chronic]
+      - severity: string

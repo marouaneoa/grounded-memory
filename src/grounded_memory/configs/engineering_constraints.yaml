@@ -1,0 +1,187 @@
+# Engineering / DevOps Domain Constraints
+# ====================================
+# Constraints for software engineering knowledge: service ownership,
+# dependency graphs, incident knowledge, and infrastructure facts.
+
+constraints:
+  # =========================================================================
+  # DEPENDENCY INTEGRITY (Severity: error)
+  # =========================================================================
+
+  - id: no_circular_dependency
+    name: "No Circular Dependencies"
+    description: "Prevent circular dependency chains between services"
+    type: consistency
+    severity: error
+    applies_to:
+      - DEPENDS_ON
+    condition:
+      check: no_cycle
+      max_depth: 10
+    actions:
+      on_violation:
+        - reject_with_reason: "Circular dependency chain detected"
+        - show_dependency_path: true
+
+  - id: ownership_cardinality
+    name: "Single Owner per Service"
+    description: "Each service must have exactly one primary owner (team)"
+    type: cardinality
+    severity: error
+    applies_to:
+      - MANAGES
+      - OWNS
+    condition:
+      check: cardinality_limit
+      count_of: active_owner_facts
+      where: same_subject
+      max: 1
+    actions:
+      on_violation:
+        - show_existing_owners: true
+        - suggest_supersession: true
+
+  # =========================================================================
+  # OPERATIONAL SAFETY (Severity: warning)
+  # =========================================================================
+
+  - id: deprecated_dependency
+    name: "Deprecated Dependency Warning"
+    description: "Warn when a service depends on a deprecated component"
+    type: consistency
+    severity: warning
+    applies_to:
+      - DEPENDS_ON
+      - USED_BY
+    condition:
+      check: object_not_deprecated
+    actions:
+      on_violation:
+        - show_deprecation_notice: true
+        - suggest_alternatives: true
+
+  - id: unowned_service
+    name: "Unowned Service Warning"
+    description: "Flag services without a designated owner"
+    type: requirement
+    severity: warning
+    applies_to:
+      - INSTANCE_OF
+    condition:
+      if:
+        - entity_type == "service"
+      then:
+        - verify: has_owner_relationship
+    actions:
+      on_violation:
+        - log_warning: "Service has no designated owner"
+
+  # =========================================================================
+  # QUALITY CONTROLS
+  # =========================================================================
+
+  - id: incident_requires_service
+    name: "Incident Must Reference Service"
+    description: "Incident facts must link to an affected service entity"
+    type: requirement
+    severity: error
+    applies_to:
+      - RELATED_TO
+    condition:
+      if:
+        - fact_kind == "incident"
+      then:
+        - verify: has_object_entity
+    actions:
+      on_violation:
+        - reject_with_reason: "Incidents must reference an affected service"
+
+# =========================================================================
+# RETRIEVAL WEIGHTS
+# =========================================================================
+
+retrieval_weights:
+  DEPENDS_ON:
+    weight: 8.0
+    is_safety_critical: true
+    decay_per_hop: 0.15
+
+  MANAGES:
+    weight: 6.0
+    is_safety_critical: false
+    decay_per_hop: 0.2
+
+  OWNS:
+    weight: 6.0
+    is_safety_critical: false
+    decay_per_hop: 0.2
+
+  USED_BY:
+    weight: 5.0
+    is_safety_critical: false
+    decay_per_hop: 0.25
+
+  PRODUCED_BY:
+    weight: 4.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  PART_OF:
+    weight: 4.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  HAS_ATTRIBUTE:
+    weight: 3.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  RELATED_TO:
+    weight: 1.0
+    is_safety_critical: false
+    decay_per_hop: 0.5
+
+# =========================================================================
+# ENTITY SCHEMAS
+# =========================================================================
+
+entity_schemas:
+  service:
+    required:
+      - name: string
+    optional:
+      - tier: enum[critical, standard, internal]
+      - owner_team: string
+      - repository: string
+      - language: string
+      - status: enum[active, deprecated, decommissioned]
+
+  project:
+    required:
+      - name: string
+    optional:
+      - status: enum[active, archived, planned]
+      - tech_stack: list[string]
+      - team: string
+
+  tool:
+    required:
+      - name: string
+    optional:
+      - category: enum[ci_cd, monitoring, testing, deployment]
+      - version: string
+
+  person:
+    required:
+      - name: string
+    optional:
+      - role: enum[engineer, sre, manager, architect]
+      - team: string
+      - specialization: string
+
+  organization:
+    required:
+      - name: string
+    optional:
+      - type: enum[team, department, company]
+      - size: number

@@ -1,0 +1,90 @@
+# =============================================================================
+# Grounded Memory System - Git Ignore
+# =============================================================================
+
+# Environment variables (NEVER commit these!)
+.env
+.env.local
+.env.*.local
+.agents/
+CLAUDE.md
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Benchmark generated artifacts
+benchmarks/cache/
+benchmarks/results/
+benchmarks/**/tmp_*.json
+benchmarks/**/tmp_*.jsonl
+benchmarks/**/probe_*.json
+benchmarks/**/probe_*.jsonl
+
+examples/.MDs
+
+# Database
+*.db
+*.sqlite3
+
+.codex
+AGENTS.md
+
+# Cache directories
+.cache/
+
+# Local thesis drafting workspace (do not commit)
+thesis prep/
+thesis/
+docs/thesis/
+
+SESSION_NOTES.md

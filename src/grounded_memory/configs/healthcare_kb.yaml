@@ -1,0 +1,126 @@
+# Healthcare Knowledge Base Configuration
+#
+# This file controls which external data sources are loaded into the
+# healthcare knowledge base at initialization time.
+#
+# Supported source types:
+#   - rxnorm: Fetch drug interactions from NLM RxNorm API
+#   - openfda: Fetch drug labels from FDA openFDA API
+#   - json_file: Load from local JSON file
+#   - yaml_file: Load from local YAML file
+
+knowledge_base:
+  # External data sources to load at startup
+  sources:
+    # RxNorm: Official drug property data from NLM (disabled — slow startup, covered by openFDA)
+    - name: "rxnorm_interactions"
+      type: "rxnorm"
+      enabled: false
+      params:
+        drugs: []
+        include_minor: false
+        max_workers: 1
+        rate_limit_delay: 0.5
+      cache_ttl_hours: 168
+
+    # openFDA: FDA drug labels — brand names, active ingredients, pharmacological classes.
+    # This is the primary external source for the healthcare KB.
+    - name: "openfda_labels"
+      type: "openfda"
+      enabled: true
+      params:
+        drugs:
+          # Bitemporal demo (JD-001)
+          - "Penicillin"
+          - "Lisinopril"
+          - "Warfarin"
+          - "Amiodarone"
+          # Multi-patient demo interactions
+          - "Trimethoprim-sulfamethoxazole"
+          - "Ibuprofen"
+          - "Aspirin"
+          - "Naproxen"
+          - "Simvastatin"
+          - "Atorvastatin"
+          - "Clarithromycin"
+          - "Azithromycin"
+          - "Digoxin"
+          - "Verapamil"
+          - "Diltiazem"
+          - "Tramadol"
+          - "Sertraline"
+          - "Fluoxetine"
+          - "Clopidogrel"
+          - "Omeprazole"
+          - "Esomeprazole"
+          - "Sildenafil"
+          - "Nitroglycerin"
+          - "Metformin"
+          - "Furosemide"
+          - "Losartan"
+          - "Amoxicillin"
+          - "Ceftriaxone"
+          - "Methadone"
+
+        # Optional: FDA API key for higher rate limits
+        # Get key from: https://open.fda.gov/apis/authentication/
+        api_key: null
+
+        max_workers: 1
+        rate_limit_delay: 0.3       # Seconds between requests
+
+      cache_ttl_hours: 168          # Cache for 1 week — avoids repeat API calls
+
+    # Local JSON file (optional)
+    - name: "local_json"
+      type: "json_file"
+      enabled: false
+      params:
+        path: "configs/healthcare_drugs.json"
+  
+  # Merge strategy: "override" or "union"
+  # "override": later sources override earlier ones for same keys
+  # "union": all data is combined (no override)
+  merge_strategy: "override"
+  
+  # Auto-refresh settings (future feature)
+  auto_refresh:
+    enabled: false
+    interval_hours: 24            # Refresh every 24 hours
+    on_startup: true
+
+
+# Constraint discovery & learning parameters
+constraint_discovery:
+  enabled: true
+  signal_batch_size: 500          # Process signals in batches
+  min_gap: 0.35                   # Min rejection gap to propose constraint (35%)
+  min_samples_per_relation: 20    # Min signals per relation to analyze
+  min_rejections_per_relation: 6  # Min rejections to consider pattern
+  
+  # Confidence weighting
+  confidence_weights:
+    rejection_gap: 0.7            # Weight for rejection gap metric
+    evidence_count: 0.2           # Weight for number of samples
+    sample_size: 0.1              # Weight for minimum sample threshold
+
+
+# Constraint promotion parameters
+promotion:
+  enabled: true
+  
+  # Thresholds for promoting SHADOW → ACTIVE
+  min_trigger_rate: 0.01          # Rule must trigger on ≥1% of facts
+  max_projected_false_block_rate: 0.02  # Max 2% false positive blocks
+  min_candidates: 100             # Minimum 100 facts evaluated
+  
+  # Promotion review interval
+  review_interval_hours: 24       # Review for promotion every 24 hours
+
+
+# Caching configuration
+cache:
+  enabled: true
+  backend: "disk"                 # Options: "disk", "redis" (redis not yet implemented)
+  directory: ".cache/grounded_memory"
+  ttl_hours: 168                  # Default 1 week cache TTL

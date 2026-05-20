@@ -1,0 +1,50 @@
+# LLM Configuration for Grounded Memory System
+# All sensitive values should be set via environment variables (see .env.example)
+
+llm:
+  # Provider: "openrouter" or "local"
+  # Set via LLM_PROVIDER environment variable
+  provider: "${LLM_PROVIDER:-openrouter}"
+  
+  # OpenRouter Configuration (recommended)
+  # Get your API key at: https://openrouter.ai/keys
+  openrouter:
+    base_url: "https://openrouter.ai/api/v1"
+    # Popular models on OpenRouter:
+    # - anthropic/claude-3.5-sonnet (recommended for clinical extraction)
+    # - google/gemini-2.0-flash-001
+    # - meta-llama/llama-3.1-70b-instruct
+    model: "${LLM_MODEL:-anthropic/claude-3.5-sonnet}"
+    api_key: "${OPENROUTER_API_KEY}"
+    site_name: "${OPENROUTER_SITE_NAME:-GroundedMemory}"
+    site_url: "${OPENROUTER_SITE_URL:-}"
+  
+  # Local LLM Configuration (for self-hosted models)
+  local:
+    base_url: "${LLM_BASE_URL:-http://localhost:8080/v1}"
+    model: "${LLM_MODEL:-local-model}"
+    api_key: "${LLM_API_KEY:-}"
+  
+  # Generation parameters (shared across all providers)
+  temperature: 0.1    # Low temperature for factual extraction
+  max_tokens: 2048    # Maximum response length
+  timeout: 120.0      # Request timeout in seconds
+  
+  # Retry configuration
+  max_retries: 3
+  retry_delay: 1.0
+
+# Database Configuration
+# All values loaded from environment variables
+database:
+  postgres:
+    host: "${POSTGRES_HOST:-localhost}"
+    port: "${POSTGRES_PORT:-5432}"
+    database: "${POSTGRES_DB:-grounded_memory}"
+    user: "${POSTGRES_USER:-postgres}"
+    password: "${POSTGRES_PASSWORD}"
+    min_connections: 2
+    max_connections: 10
+  
+  # Use in-memory store for development/testing
+  use_memory_store: false

@@ -1,0 +1,44 @@
+# Neo4j Configuration for Grounded Memory System
+# Neo4j serves as the active knowledge graph in the hybrid architecture.
+#
+# Architecture:
+#   PostgreSQL  = Source of truth (temporal history, audit trail, transactions)
+#   Neo4j       = Active knowledge graph (current state, graph traversal, path finding)
+#
+# All sensitive values should be set via environment variables.
+
+neo4j:
+  # Connection
+  uri: "${NEO4J_URI:-bolt://localhost:7687}"
+  user: "${NEO4J_USER:-neo4j}"
+  password: "${NEO4J_PASSWORD:-password}"
+  database: "${NEO4J_DATABASE:-neo4j}"
+
+  # Connection pool
+  max_connection_pool_size: 50
+
+  # Feature flags
+  enabled: true                    # Set to false to disable Neo4j sync entirely
+  sync_on_write: true              # Sync entities/facts to Neo4j on every write
+  use_for_retrieval: true          # Use Neo4j for graph retrieval queries
+  fallback_to_networkx: true       # Fall back to NetworkX if Neo4j is unavailable
+
+  # Schema
+  create_schema_on_startup: true   # Create indexes/constraints on initialization
+
+  # Node labels (mapped from EntityType enum)
+  # These are auto-generated from EntityType values but listed here for reference:
+  #   patient            -> :Patient
+  #   medication         -> :Medication
+  #   condition          -> :Condition
+  #   allergy            -> :Allergy
+  #   ingredient         -> :Ingredient
+  #   therapeutic_class  -> :TherapeuticClass
+  #   clinician          -> :Clinician
+  #   facility           -> :Facility
+
+  # Relationship types (mapped from RelationType enum)
+  # These are used directly as Neo4j relationship types:
+  #   HAS_ALLERGY, HAS_CONDITION, PRESCRIBED, DISCONTINUED,
+  #   TREATS, CONTAINS_INGREDIENT, SAME_THERAPEUTIC_CLASS,
+  #   CONTRAINDICATED_WITH, HAS_ATTRIBUTE, RELATED_TO, PART_OF, INSTANCE_OF

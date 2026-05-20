@@ -1,0 +1,174 @@
+# Generic Domain Constraints
+# ====================================
+# Open-domain constraints for general-purpose knowledge graphs.
+# These ensure basic data quality without domain-specific rules.
+
+constraints:
+  # =========================================================================
+  # TUPLE COMPLETENESS (Severity: error)
+  # =========================================================================
+
+  - id: tuple_completeness
+    name: "Tuple Completeness"
+    description: "Every fact must have either an object entity or a value"
+    type: requirement
+    severity: error
+    applies_to: []  # All relations
+    condition:
+      check: has_object_or_value
+    actions:
+      on_violation:
+        - reject_with_reason: "Fact requires either object_entity_id or value"
+
+  - id: confidence_floor
+    name: "Confidence Floor"
+    description: "Reject facts with confidence below minimum threshold"
+    type: requirement
+    severity: error
+    applies_to: []
+    condition:
+      check: confidence_above
+      threshold: 0.3
+    actions:
+      on_violation:
+        - reject_with_reason: "Confidence score too low for storage"
+
+  # =========================================================================
+  # QUALITY GATES (Severity: warning)
+  # =========================================================================
+
+  - id: low_confidence_warning
+    name: "Low Confidence Warning"
+    description: "Flag facts with moderate confidence for review"
+    type: requirement
+    severity: warning
+    applies_to: []
+    condition:
+      check: confidence_below
+      threshold: 0.7
+    actions:
+      on_violation:
+        - log_warning: "Fact accepted but flagged for low confidence"
+
+  - id: self_referential_check
+    name: "Self-Referential Fact"
+    description: "Warn when subject and object are the same entity"
+    type: consistency
+    severity: warning
+    applies_to: []
+    condition:
+      check: subject_not_equal_object
+    actions:
+      on_violation:
+        - log_warning: "Subject and object are the same entity"
+
+  # =========================================================================
+  # DUPLICATE PREVENTION (Severity: info)
+  # =========================================================================
+
+  - id: semantic_duplicate_check
+    name: "Semantic Duplicate"
+    description: "Detect near-duplicate facts via semantic key matching"
+    type: consistency
+    severity: info
+    applies_to: []
+    condition:
+      check: no_semantic_duplicate
+    actions:
+      on_match:
+        - log_info: "Potential duplicate detected"
+
+# =========================================================================
+# RETRIEVAL WEIGHTS
+# =========================================================================
+
+retrieval_weights:
+  HAS_ATTRIBUTE:
+    weight: 3.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  RELATED_TO:
+    weight: 1.0
+    is_safety_critical: false
+    decay_per_hop: 0.5
+
+  PART_OF:
+    weight: 2.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  INSTANCE_OF:
+    weight: 2.0
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  OWNS:
+    weight: 2.5
+    is_safety_critical: false
+    decay_per_hop: 0.3
+
+  WORKS_AT:
+    weight: 2.0
+    is_safety_critical: false
+    decay_per_hop: 0.4
+
+  LOCATED_IN:
+    weight: 2.0
+    is_safety_critical: false
+    decay_per_hop: 0.4
+
+  MEMBER_OF:
+    weight: 2.0
+    is_safety_critical: false
+    decay_per_hop: 0.4
+
+# =========================================================================
+# ENTITY SCHEMAS
+# =========================================================================
+
+entity_schemas:
+  person:
+    required:
+      - name: string
+    optional:
+      - email: string
+      - role: string
+      - department: string
+
+  organization:
+    required:
+      - name: string
+    optional:
+      - industry: string
+      - size: string
+      - location: string
+
+  project:
+    required:
+      - name: string
+    optional:
+      - status: enum[active, archived, planned]
+      - owner: string
+      - start_date: date
+
+  concept:
+    required:
+      - name: string
+    optional:
+      - category: string
+      - description: string
+
+  place:
+    required:
+      - name: string
+    optional:
+      - type: enum[city, country, region, building, room]
+      - coordinates: string
+
+  facility:
+    required:
+      - name: string
+    optional:
+      - type: string
+      - attributes: object

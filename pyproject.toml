@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/marouaneoa/GroundedMemory"
+Repository = "https://github.com/marouaneoa/grounded-memory"
 
 [project.optional-dependencies]
 dev = [
